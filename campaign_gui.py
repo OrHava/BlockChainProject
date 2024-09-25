@@ -210,54 +210,67 @@ class CampaignApp:
                 raise Exception(f"Failed to add file: HTTP {response.status_code}")
     
     async def create_campaign_async(self):
-     balance = self.web3.eth.get_balance(self.account)
-     print(f"Account balance: {self.web3.from_wei(balance, 'ether')} ETH")
+        balance = self.web3.eth.get_balance(self.account)
+        print(f"Account balance: {self.web3.from_wei(balance, 'ether')} ETH")
     
-     title = self.title_entry.get()
-     goal = self.web3.to_wei(float(self.goal_entry.get()), 'ether')
-     ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
+        title = self.title_entry.get()
+        goal = self.web3.to_wei(float(self.goal_entry.get()), 'ether')
+        ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
 
-     try:
-         nonce = self.web3.eth.get_transaction_count(self.account)
-         gas_price = self.web3.eth.gas_price
-         gas_limit = 250000  # Set a fixed gas limit
+        try:
+            nonce = self.web3.eth.get_transaction_count(self.account)
+        
+            # Estimate gas instead of using a fixed value
+            estimated_gas = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: self.factory_contract.functions.createCampaign(title, goal, ipfs_hash).estimate_gas({'from': self.account})
+            )
+        
+            # Add a buffer to the estimated gas
+            gas_limit = int(estimated_gas * 1.2)
+        
+            # Get current gas price and add a small premium
+            gas_price = int(self.web3.eth.gas_price * 1.1)
 
-         transaction = self.factory_contract.functions.createCampaign(
-             title, goal, ipfs_hash
-         ).build_transaction({
-             'from': self.account,
-             'nonce': nonce,
-             'gas': gas_limit,
-             'gasPrice': gas_price,
-         })
+            transaction = self.factory_contract.functions.createCampaign(
+                title, goal, ipfs_hash
+            ).build_transaction({
+                'from': self.account,
+                'nonce': nonce,
+                'gas': gas_limit,
+                'gasPrice': gas_price,
+            })
 
-         total_cost = gas_limit * gas_price
-         print(f"Estimated total cost: {self.web3.from_wei(total_cost, 'ether')} ETH")
-         print(f"Gas limit: {gas_limit}")
-         print(f"Gas price: {self.web3.from_wei(gas_price, 'gwei')} Gwei")
+            total_cost = gas_limit * gas_price
+            print(f"Estimated total cost: {self.web3.from_wei(total_cost, 'ether')} ETH")
+            print(f"Gas limit: {gas_limit}")
+            print(f"Gas price: {self.web3.from_wei(gas_price, 'gwei')} Gwei")
 
-         if balance < total_cost:
-             raise Exception(f"Insufficient funds for gas. Need {self.web3.from_wei(total_cost, 'ether')} ETH, but only have {self.web3.from_wei(balance, 'ether')} ETH")
+            if balance < total_cost:
+                raise Exception(f"Insufficient funds for gas. Need {self.web3.from_wei(total_cost, 'ether')} ETH, but only have {self.web3.from_wei(balance, 'ether')} ETH")
 
-         signed_txn = self.web3.eth.account.sign_transaction(transaction, self.private_key)
-         tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            signed_txn = self.web3.eth.account.sign_transaction(transaction, self.private_key)
+            tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
-         print(f"Transaction sent: {self.web3.to_hex(tx_hash)}")
+            print(f"Transaction sent: {self.web3.to_hex(tx_hash)}")
 
-         tx_receipt = await asyncio.get_event_loop().run_in_executor(
-             None, 
-             lambda: self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-         )
+            tx_receipt = await asyncio.get_event_loop().run_in_executor(
+                None, 
+                lambda: self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=180)
+            )
 
-         success_msg = f"Campaign created successfully!\nTransaction Hash: {self.web3.to_hex(tx_receipt['transactionHash'])}\nIPFS Hash: {ipfs_hash}"
-         print(success_msg)
-         self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
-         self.root.after(0, self.load_campaigns)
+            if tx_receipt['status'] == 1:
+                success_msg = f"Campaign created successfully!\nTransaction Hash: {self.web3.to_hex(tx_receipt['transactionHash'])}\nIPFS Hash: {ipfs_hash}"
+                print(success_msg)
+                self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
+                self.root.after(0, self.load_campaigns)
+            else:
+                raise Exception("Transaction failed. Check Etherscan for more details.")
 
-     except Exception as e:
-         error_msg = f"Failed to create campaign: {str(e)}"
-         print(error_msg, file=sys.stderr)
-         self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
+        except Exception as e:
+            error_msg = f"Failed to create campaign: {str(e)}"
+            print(error_msg, file=sys.stderr)
+            self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
 
     def create_campaign(self):
         asyncio.run(self.create_campaign_async())
