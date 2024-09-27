@@ -1,5 +1,14 @@
 # Smart Contract Deployment Guide
 
+## Table of Contents
+- [Overview](#overview)
+- [Prerequisites](#prerequisites)
+- [Project Setup](#project-setup)
+- [Extracting ABIs](#extracting-abis)
+- [Deploying Smart Contracts](#deploying-smart-contracts)
+- [Running the Application](#running-the-application)
+- [Additional Notes](#additional-notes)
+
 ## Overview
 
 This guide provides detailed instructions on how to deploy the smart contracts for the Campaign DApp, install necessary dependencies, and extract ABIs from the compiled contracts.
@@ -16,73 +25,87 @@ Ensure you have the following installed on your machine:
 
 ## Project Setup
 
-1. **Clone the Repository**
+### 1. Clone the Repository
 
-   Open your terminal and run:
+Open your terminal and run:
 
-   ```bash
-   git clone <your-repo-url>
-   cd <your-project-directory>
+```bash
+git clone <your-repo-url>
+cd <your-project-directory>
+```
 
+### 2. Install Node Modules
 
-#  Install Node Modules
+Navigate to your project directory and install the required Node.js packages:
 
-## Navigate to your project directory and install the required Node.js packages:
-
-bash
-Copy code
+```bash
 npm install
-Install Python Libraries
+```
 
-## Create a virtual environment (optional but recommended) and install the required libraries:
+### 3. Install Python Libraries
 
-bash
-Copy code
+Create a virtual environment (optional but recommended) and install the required libraries:
+
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install web3 python-dotenv requests aiohttp ttkbootstrap
-Extracting ABIs
-To extract the ABI from the compiled contract JSON files, follow these steps:
+```
 
-## Ensure you have the extract_abis.js file in your project.
+## Extracting ABIs
 
-## Run the following command:
+To extract the ABI from the compiled contract JSON files:
 
-bash
-Copy code
+1. Ensure you have the `extract_abis.js` file in your project.
+2. Run the following command:
+
+```bash
 node extract_abis.js
-This will generate Campaign_ABI.json and CampaignFactory_ABI.json files in your project directory.
+```
 
-# Deploying Smart Contracts
-## Configure Environment Variables
+This will generate `Campaign_ABI.json` and `CampaignFactory_ABI.json` files in your project directory.
 
-## Create a .env file in your project root and add the following variables:
+## Deploying Smart Contracts
 
-Copy code
+### Configure Environment Variables
+
+Create a `.env` file in your project root and add the following variables:
+
+```
 MNEMONIC="your mnemonic here"
 GETBLOCK_API_KEY="your getBlock API key here"
 SEPOLIA_URL="https://go.getblock.io/your_api_key_here"
 FACTORY_ADDRESS="your_factory_contract_address_here"
+```
 
+### Deploy to Sepolia Network
 
-# Deploy to Sepolia Network
+Use the Truffle migration command to deploy your contracts:
 
-## Use the Truffle migration command to deploy your contracts:
-
-bash
-Copy code
+```bash
 truffle migrate --network sepolia
-Make sure your truffle-config.js is properly set up for the Sepolia network.
+```
 
-# Running the Application
-## To run the Python GUI application, execute the following command:
+Make sure your `truffle-config.js` is properly set up for the Sepolia network.
 
-bash
-Copy code
+## Running the Application
+
+To run the Python GUI application, execute the following command:
+
+```bash
 python campaign_gui.py
+```
+
 Ensure the IPFS daemon is running if you are using IPFS for storage.
 
-# Additional Notes
-Make sure to never expose your mnemonic or private keys in public repositories.
-Update gas settings and network configurations as needed in your truffle-config.js.
-For further enhancements, refer to Truffle and Web3.js documentation.
+## Additional Notes
+
+- 🔒 Never expose your mnemonic or private keys in public repositories.
+- ⚙️ Update gas settings and network configurations as needed in your `truffle-config.js`.
+- 📚 For further enhancements, refer to [Truffle](https://trufflesuite.com/docs/) and [Web3.js](https://web3js.readthedocs.io/) documentation.
+
+---
+
+For any issues or questions, please open an issue in the repository or contact the maintainer.
+
+Happy coding! 🚀
