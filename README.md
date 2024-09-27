@@ -1,5 +1,23 @@
 # Smart Contract Deployment Guide
 
+## Smart Contract Overview
+
+This project includes a smart contract for managing crowdfunding campaigns. The `Campaign` contract allows:
+
+- Creation of a campaign with a title, funding goal, and IPFS hash for additional details
+- Donations from supporters
+- Automatic closure when the funding goal is reached
+- Manual closure by the campaign owner
+- Withdrawal of funds by the owner after campaign closure
+- Tracking of individual donations and total funds raised
+- Retrieval of campaign details and donation information
+
+Key features:
+- Ownership control
+- Goal-based auto-closure
+- IPFS integration for decentralized data storage
+- Event emission for donations and campaign closure
+
 ## Table of Contents
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
@@ -76,6 +94,7 @@ MNEMONIC="your mnemonic here"
 GETBLOCK_API_KEY="your getBlock API key here"
 SEPOLIA_URL="https://go.getblock.io/your_api_key_here"
 FACTORY_ADDRESS="your_factory_contract_address_here"
+PRIVATE_KEY="your_PRIVATE_KEY_here""
 ```
 
 ### Deploy to Sepolia Network
@@ -84,6 +103,8 @@ Use the Truffle migration command to deploy your contracts:
 
 ```bash
 truffle migrate --network sepolia
+or
+truffle migrate --network dashboard
 ```
 
 Make sure your `truffle-config.js` is properly set up for the Sepolia network.
@@ -107,5 +128,8 @@ Ensure the IPFS daemon is running if you are using IPFS for storage.
 ---
 
 For any issues or questions, please open an issue in the repository or contact the maintainer.
+
+## UI Pics
+
 
 Happy coding! 🚀
