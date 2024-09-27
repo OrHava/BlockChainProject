@@ -1,3 +1,4 @@
+import random
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter import filedialog
@@ -11,6 +12,14 @@ import asyncio
 from web3.exceptions import TransactionNotFound, TimeExhausted
 from web3.exceptions import ContractLogicError
 from eth_account import Account
+import threading
+import aiohttp
+
+
+
+from ttkbootstrap import Style
+from PIL import Image, ImageTk
+import sv_ttk
 
 class CampaignApp:
     def __init__(self, root):
@@ -31,6 +40,7 @@ class CampaignApp:
         self.setup_web3()
         self.setup_ui()
         self.load_campaigns()
+        self.start_asyncio_event_loop()
 
     def setup_ipfs(self):
         try:
@@ -100,12 +110,13 @@ class CampaignApp:
            self.root.quit()
 
     def setup_ui(self):
-        style = ttk.Style()
-        style.configure('TNotebook.Tab', font=self.default_font)
-        style.configure('TButton', font=self.button_font)
-        style.configure('TLabel', font=self.default_font)
-        style.configure('Treeview.Heading', font=self.header_font)
+        # Use ttkbootstrap for a modern look
+        style = Style(theme="darkly")
+        
+        # Enable Sun Valley theme for a modern Windows 11 look
+        sv_ttk.set_theme("dark")
 
+        self.root.configure(bg="#1e1e1e")
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(expand=True, fill="both", padx=20, pady=20)
 
@@ -121,29 +132,104 @@ class CampaignApp:
         self.setup_list_tab()
         self.setup_donate_tab()
 
+        # Add a cool background
+        self.add_animated_background()
+
+    def add_animated_background(self):
+        self.canvas = tk.Canvas(self.root, highlightthickness=0)
+        self.canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        
+        # Instead of lower(), use lift() on other widgets to bring them to the front
+        for child in self.root.winfo_children():
+            if child != self.canvas:
+                child.lift()
+
+        self.particles = []
+        for _ in range(50):
+            x = random.randint(0, self.root.winfo_width())
+            y = random.randint(0, self.root.winfo_height())
+            r = random.randint(1, 3)
+            dx = random.uniform(-0.5, 0.5)
+            dy = random.uniform(-0.5, 0.5)
+            color = random.choice(['#FFD700', '#87CEEB', '#98FB98'])  # Gold, Sky Blue, Pale Green
+            particle = self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=color, outline='')
+            self.particles.append((particle, dx, dy))
+        
+        self.animate_particles()
+
+    def animate_particles(self):
+        w, h = self.root.winfo_width(), self.root.winfo_height()
+        for i, (particle, dx, dy) in enumerate(self.particles):
+            x1, y1, x2, y2 = self.canvas.coords(particle)
+            
+            # Bounce off edges
+            if x2 > w or x1 < 0:
+                dx = -dx
+            if y2 > h or y1 < 0:
+                dy = -dy
+            
+            # Move particle
+            self.canvas.move(particle, dx, dy)
+            
+            # Fade effect
+            current_color = self.canvas.itemcget(particle, 'fill')
+            r, g, b = self.root.winfo_rgb(current_color)
+            r, g, b = r//256, g//256, b//256
+            r = max(0, r - 1)
+            g = max(0, g - 1)
+            b = max(0, b - 1)
+            new_color = f'#{r:02x}{g:02x}{b:02x}'
+            self.canvas.itemconfig(particle, fill=new_color)
+            
+            # Respawn particle if it's too faded
+            if r + g + b < 30:
+                x = random.randint(0, w)
+                y = random.randint(0, h)
+                r = random.randint(1, 3)
+                color = random.choice(['#FFD700', '#87CEEB', '#98FB98'])
+                self.canvas.coords(particle, x-r, y-r, x+r, y+r)
+                self.canvas.itemconfig(particle, fill=color)
+            
+            self.particles[i] = (particle, dx, dy)
+        
+        self.root.after(50, self.animate_particles)
+
     def setup_create_tab(self):
         frame = ttk.Frame(self.create_tab, padding="20")
-        frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        ttk.Label(frame, text="Campaign Title:", font=self.default_font).grid(column=0, row=0, sticky=tk.W, pady=10)
-        self.title_entry = ttk.Entry(frame, width=50)
-        self.title_entry.grid(column=1, row=0, sticky=(tk.W, tk.E), pady=10)
-
-        ttk.Label(frame, text="Goal Amount (ETH):", font=self.default_font).grid(column=0, row=1, sticky=tk.W, pady=10)
-        self.goal_entry = ttk.Entry(frame, width=50)
-        self.goal_entry.grid(column=1, row=1, sticky=(tk.W, tk.E), pady=10)
-
-        ttk.Button(frame, text="Create Campaign", command=self.create_campaign, style="TButton").grid(column=1, row=2, sticky=tk.E, pady=20)
-        ttk.Button(frame, text="Upload File", command=self.upload_file, style="TButton").grid(column=1, row=3, sticky=tk.E, pady=5)
-
-        self.file_label = ttk.Label(frame, text="No file selected", font=self.default_font)
-        self.file_label.grid(column=1, row=4, sticky=tk.W, pady=10)
-
-    def setup_list_tab(self):
-        frame = ttk.Frame(self.list_tab, padding="10")
         frame.pack(fill=tk.BOTH, expand=True)
 
-        self.campaign_list = ttk.Treeview(frame, columns=('Title', 'Goal', 'Balance', 'Status', 'Address', 'IPFS Hash'), show='headings')
+        ttk.Label(frame, text="Create a New Campaign", font=("Segoe UI", 24, "bold")).pack(pady=20)
+
+        form_frame = ttk.Frame(frame)
+        form_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(form_frame, text="Campaign Title:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.title_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
+        self.title_entry.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(form_frame, text="Goal Amount (ETH):", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.goal_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
+        self.goal_entry.pack(fill=tk.X, pady=(0, 10))
+
+        button_frame = ttk.Frame(form_frame)
+        button_frame.pack(pady=20)
+
+        create_button = ttk.Button(button_frame, text="Create Campaign", command=self.create_campaign, style="Accent.TButton")
+        create_button.pack(side=tk.LEFT, padx=10)
+
+        upload_button = ttk.Button(button_frame, text="Upload File", command=self.upload_file, style="Accent.TButton")
+        upload_button.pack(side=tk.LEFT, padx=10)
+
+        self.file_label = ttk.Label(form_frame, text="No file selected", font=("Segoe UI", 10))
+        self.file_label.pack(pady=10)
+
+    def setup_list_tab(self):
+        frame = ttk.Frame(self.list_tab, padding="20")
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Campaign List", font=("Segoe UI", 24, "bold")).pack(pady=20)
+
+        self.campaign_list = ttk.Treeview(frame, columns=('Title', 'Goal', 'Balance', 'Status', 'Address', 'IPFS Hash'), show='headings', style="Accent.Treeview")
         self.campaign_list.heading('Title', text='Campaign Title')
         self.campaign_list.heading('Goal', text='Goal (ETH)')
         self.campaign_list.heading('Balance', text='Current Balance (ETH)')
@@ -164,31 +250,40 @@ class CampaignApp:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.campaign_list.configure(yscrollcommand=scrollbar.set)
 
-        button_frame = ttk.Frame(frame, padding="10")
-        button_frame.pack(fill=tk.X, pady=10)
+        button_frame = ttk.Frame(frame)
+        button_frame.pack(fill=tk.X, pady=20)
 
-        ttk.Button(button_frame, text="Refresh", command=self.load_campaigns, style="TButton").pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="Donate to Selected", command=self.donate_to_selected, style="TButton").pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="View File", command=self.view_file, style="TButton").pack(side=tk.LEFT, padx=10)
+        refresh_button = ttk.Button(button_frame, text="Refresh", command=self.load_campaigns, style="Accent.TButton")
+        refresh_button.pack(side=tk.LEFT, padx=10)
+
+        donate_button = ttk.Button(button_frame, text="Donate to Selected", command=self.donate_to_selected, style="Accent.TButton")
+        donate_button.pack(side=tk.LEFT, padx=10)
+
+        view_button = ttk.Button(button_frame, text="View File", command=self.view_file, style="Accent.TButton")
+        view_button.pack(side=tk.LEFT, padx=10)
 
         self.campaign_list.bind('<<TreeviewSelect>>', self.on_campaign_select)
 
     def setup_donate_tab(self):
         frame = ttk.Frame(self.donate_tab, padding="20")
-        frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(frame, text="Campaign Address:", font=self.default_font).grid(column=0, row=0, sticky=tk.W, pady=10)
-        self.donate_entry = ttk.Entry(frame, width=50)
-        self.donate_entry.grid(column=1, row=0, sticky=(tk.W, tk.E), pady=10)
+        ttk.Label(frame, text="Donate to a Campaign", font=("Segoe UI", 24, "bold")).pack(pady=20)
 
-        ttk.Label(frame, text="Amount to Donate (ETH):", font=self.default_font).grid(column=0, row=1, sticky=tk.W, pady=10)
-        self.amount_entry = ttk.Entry(frame, width=50)
-        self.amount_entry.grid(column=1, row=1, sticky=(tk.W, tk.E), pady=10)
+        form_frame = ttk.Frame(frame)
+        form_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Use a lambda function to pass the values from the entries
-        ttk.Button(frame, text="Donate", 
-                   command=lambda: self.donate_to_campaign(self.donate_entry.get(), self.amount_entry.get()), 
-                   style="TButton").grid(column=1, row=2, sticky=tk.E, pady=20)
+        ttk.Label(form_frame, text="Campaign Address:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.donate_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
+        self.donate_entry.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(form_frame, text="Amount to Donate (ETH):", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.amount_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
+        self.amount_entry.pack(fill=tk.X, pady=(0, 10))
+
+        donate_button = ttk.Button(form_frame, text="Donate", command=self.handle_donate_button, style="Accent.TButton")
+        donate_button.pack(pady=20)
+
 
     def upload_file(self):
         file_path = filedialog.askopenfilename()
@@ -211,22 +306,7 @@ class CampaignApp:
                 messagebox.showerror("Upload Error", error_msg)
 
 
-    def setup_donate_tab(self):
-        frame = ttk.Frame(self.donate_tab, padding="20")
-        frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        ttk.Label(frame, text="Campaign Address:", font=self.default_font).grid(column=0, row=0, sticky=tk.W, pady=10)
-        self.donate_entry = ttk.Entry(frame, width=50)
-        self.donate_entry.grid(column=1, row=0, sticky=(tk.W, tk.E), pady=10)
-
-        ttk.Label(frame, text="Amount to Donate (ETH):", font=self.default_font).grid(column=0, row=1, sticky=tk.W, pady=10)
-        self.amount_entry = ttk.Entry(frame, width=50)
-        self.amount_entry.grid(column=1, row=1, sticky=(tk.W, tk.E), pady=10)
-
-        # Use a lambda function to pass the values from the entries
-        ttk.Button(frame, text="Donate", 
-                   command=lambda: self.donate_to_campaign(self.donate_entry.get(), self.amount_entry.get()), 
-                   style="TButton").grid(column=1, row=2, sticky=tk.E, pady=20)
 
 
     def add_file(self, file_path):
@@ -242,8 +322,11 @@ class CampaignApp:
         ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
 
         try:
-             # Get nonce for the account
-            nonce = self.web3.eth.get_transaction_count(self.account)
+            # Get the account address as a string
+            account_address = self.account.address if hasattr(self.account, 'address') else self.account
+
+            # Get nonce for the account
+            nonce = self.web3.eth.get_transaction_count(account_address)
 
             # Get the current gas price and increase it by 10%
             gas_price = self.web3.eth.gas_price
@@ -251,11 +334,12 @@ class CampaignApp:
 
             # Create the transaction with a higher gas price
             txn = self.factory_contract.functions.createCampaign(title, goal, ipfs_hash).build_transaction({
-                'from': self.account,
+                'from': account_address,
                 'nonce': nonce,
                 'gas': 2000000,  # Adjust gas limit as necessary
                 'gasPrice': increased_gas_price,
             })
+        
             # Sign the transaction
             signed_txn = self.web3.eth.account.sign_transaction(txn, private_key=self.private_key)
 
@@ -275,67 +359,6 @@ class CampaignApp:
             messagebox.showerror("Error", error_msg)
 
 
-    # async def create_campaign_async(self):
-    #     balance = self.web3.eth.get_balance(self.account)
-    #     print(f"Account balance: {self.web3.from_wei(balance, 'ether')} ETH")
-
-    #     title = self.title_entry.get()
-    #     goal = self.web3.to_wei(float(self.goal_entry.get()), 'ether')
-    #     ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
-
-    #     try:
-    #         nonce = self.web3.eth.get_transaction_count(self.account)
-    #         gas_price = self.web3.eth.gas_price
-    #         gas_limit = 100000    # Lower gas limit
-
-    #         transaction = self.factory_contract.functions.createCampaign(
-    #             title, goal, ipfs_hash
-    #         ).build_transaction({
-    #             'from': self.account,
-    #             'nonce': nonce,
-    #             'gas': gas_limit,
-    #             'gasPrice': gas_price,
-    #         })
-
-    #         total_cost = gas_limit * gas_price
-    #         print(f"Estimated total cost: {self.web3.from_wei(total_cost, 'ether')} ETH")
-    #         print(f"Gas limit: {gas_limit}")
-    #         print(f"Gas price: {self.web3.from_wei(gas_price, 'gwei')} Gwei")
-
-    #         if balance < total_cost:
-    #             raise Exception(f"Insufficient funds for gas. Need {self.web3.from_wei(total_cost, 'ether')} ETH, but only have {self.web3.from_wei(balance, 'ether')} ETH")
-
-    #         signed_txn = self.web3.eth.account.sign_transaction(transaction, self.private_key)
-    #         tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
-
-    #         print(f"Transaction sent: {self.web3.to_hex(tx_hash)}")
-
-    #         tx_receipt = await asyncio.get_event_loop().run_in_executor(
-    #             None,
-    #             lambda: self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-    #         )
-
-    #         success_msg = f"Campaign created successfully!\nTransaction Hash: {self.web3.to_hex(tx_receipt['transactionHash'])}\nIPFS Hash: {ipfs_hash}"
-    #         print(success_msg)
-           
-
-
-    #         self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
-    #         self.root.after(0, self.load_campaigns)
-    #         # After successfully creating the campaign
-    #         print(f"Campaign created. Attempting to load campaigns...")
-    #         campaign_count = self.factory_contract.functions.getCampaignCount().call()
-    #         print(f"Current campaign count: {campaign_count}")
-    #         campaigns = self.factory_contract.functions.getCampaigns().call()
-    #         print(f"Campaigns: {campaigns}")
-
-            
-
-    #     except Exception as e:
-    #         error_msg = f"Failed to create campaign: {str(e)}"
-    #         print(error_msg, file=sys.stderr)
-    #         self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
-
 
     def create_campaign(self):
         asyncio.run(self.create_campaign_async())
@@ -346,33 +369,31 @@ class CampaignApp:
             campaign_addresses = self.factory_contract.functions.getCampaigns().call()
             for campaign_address in campaign_addresses:
                 campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
+            
+                # Fetch the updated campaign details after the donation
                 title, goal, total_funds, closed, _ipfsHash = campaign_contract.functions.getCampaignDetails().call()
+
+                # Convert goal and total funds to ETH with better precision
                 goal_eth = self.web3.from_wei(goal, 'ether')
                 total_funds_eth = self.web3.from_wei(total_funds, 'ether')
+            
+                # Show up to 6 decimal places for small values
+                goal_eth_str = f"{goal_eth:.16f}"
+                total_funds_eth_str = f"{total_funds_eth:.16f}"
+
                 status = "Closed" if closed else "Open"
-                self.campaign_list.insert('', 'end', values=(title, f"{goal_eth:.2f}", f"{total_funds_eth:.2f}", status, campaign_address, _ipfsHash))
+
+                # Insert the data into the campaign list
+                self.campaign_list.insert('', 'end', values=(title, goal_eth_str, total_funds_eth_str, status, campaign_address, _ipfsHash))
+
             print(f"Loaded {len(campaign_addresses)} campaigns successfully")
         except Exception as e:
             error_msg = f"Failed to load campaigns: {str(e)}"
             print(error_msg, file=sys.stderr)
             messagebox.showerror("Error", error_msg)
-    # def load_campaigns(self):
-    #     self.campaign_list.delete(*self.campaign_list.get_children())
-    #     try:
-    #         campaign_count = self.factory_contract.functions.getCampaigns().call()
-    #         for i in range(len(campaign_count)):
-    #             campaign_address = campaign_count[i]
-    #             campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
-    #             title, goal, total_funds, closed, _ipfsHash = campaign_contract.functions.getCampaignDetails().call()
-    #             goal_eth = self.web3.from_wei(goal, 'ether')
-    #             total_funds_eth = self.web3.from_wei(total_funds, 'ether')
-    #             status = "Closed" if closed else "Open"
-    #             self.campaign_list.insert('', 'end', values=(title, f"{goal_eth:.2f}", f"{total_funds_eth:.2f}", status, campaign_address, _ipfsHash))
-    #         print(f"Loaded {len(campaign_count)} campaigns successfully")
-    #     except Exception as e:
-    #         error_msg = f"Failed to load campaigns: {str(e)}"
-    #         print(error_msg, file=sys.stderr)
-    #         messagebox.showerror("Error", error_msg)
+
+
+    
     def on_campaign_select(self, event):
        selected_items = self.campaign_list.selection()
        if selected_items:  # Check if any item is selected
@@ -417,7 +438,7 @@ class CampaignApp:
             signed_txn = self.web3.eth.account.sign_transaction(transaction, private_key=self.private_key)
 
             # Send the signed transaction
-            tx_hash = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
             # Wait for the transaction receipt
             tx_receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash)
@@ -428,82 +449,236 @@ class CampaignApp:
             print(f"Failed to send transaction: {str(e)}", file=sys.stderr)
             return None
 
+    def start_asyncio_event_loop(self):
+        # Create a new event loop and run it in a background thread
+        self.asyncio_loop = asyncio.new_event_loop()
+        threading.Thread(target=self.asyncio_loop.run_forever, daemon=True).start()
 
-
-    def donate_to_campaign(self):
+    def handle_donate_button(self):
+        # Get campaign address and donation amount from the entries
         campaign_address = self.donate_entry.get()
-    
-        try:
-            amount = self.web3.to_wei(float(self.amount_entry.get()), 'ether')
+        amount = self.amount_entry.get()
 
-            # Ensure the contract is set up with the correct ABI and address
+        # Run the async donation function in the asyncio event loop
+        asyncio.run_coroutine_threadsafe(self.donate_to_campaign(campaign_address, amount), self.asyncio_loop)
+
+    async def donate_to_campaign(self, campaign_address, amount):
+        try:
+            # Check if the account has enough balance
+            balance = self.web3.eth.get_balance(self.account_address)
+            if balance == 0:
+                raise ValueError("Account has insufficient funds for the donation")
+
+            # Convert the donation amount to float and check if it is greater than zero
+            amount_float = float(amount)
+            if amount_float <= 0:
+                raise ValueError("Donation amount must be greater than zero")
+
+            # Convert donation amount to Wei (minimum 0.000001 ETH to avoid very small amounts)
+            amount_in_wei = self.web3.to_wei(amount_float, 'ether')
+            if amount_in_wei < self.web3.to_wei(0.000001, 'ether'):
+                raise ValueError("Donation amount is too small. Minimum is 0.000001 ETH")
+
+            # Set up the campaign contract
+           
+            nonce = self.web3.eth.get_transaction_count(self.account_address)
+            gas_price = self.web3.eth.gas_price
+            increased_gas_price = int(gas_price * 1.1)
+            chain_id = 11155111  # Sepolia testnet chain ID
+
             campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
-        
-            # Call the correct function as per your contract ABI
-            tx_hash = campaign_contract.functions.donate().transact({'from': self.account, 'value': amount})
-        
-            # Wait for the transaction receipt
+            tx = campaign_contract.functions.donate().build_transaction({
+               'from': self.account_address,
+               'value': amount_in_wei,
+               'gas': 200000,  # Estimate this value
+               'gasPrice': increased_gas_price,
+               'nonce': nonce,
+               'chainId': chain_id,
+           })
+
+            # Sign and send the transaction
+            signed_tx = self.web3.eth.account.sign_transaction(tx, private_key=self.private_key)
+            tx_hash = self.web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
+            # Wait for transaction receipt and confirm it succeeded
             tx_receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash)
-        
             success_msg = f"Donation successful!\nTransaction Hash: {self.web3.to_hex(tx_hash)}"
             print(success_msg)
             messagebox.showinfo("Success", success_msg)
-        
-            # Load campaigns or refresh UI if needed
+
+            # Ensure that the campaigns list is refreshed after the transaction
             self.load_campaigns()
-    
+
         except ValueError as e:
-            # Handle case where the ABI or contract address might be incorrect
-            error_msg = f"Failed to donate: {str(e)}"
-            print(error_msg, file=sys.stderr)
-            messagebox.showerror("Error", error_msg)
-    
-        except Exception as e:
-            # Handle any other exceptions that may occur
             error_msg = f"Failed to donate: {str(e)}"
             print(error_msg, file=sys.stderr)
             messagebox.showerror("Error", error_msg)
 
-    def view_file(self):
+        except Exception as e:
+            error_msg = f"Failed to donate: {str(e)}"
+            print(error_msg, file=sys.stderr)
+            messagebox.showerror("Error", error_msg)
+
+
+
+
+
+    def handle_close_and_withdraw_button(self):
+        # Get campaign address from the entry
+        campaign_address = self.close_withdraw_entry.get()
+
+        # Run the async close and withdraw function in the asyncio event loop
+        asyncio.run_coroutine_threadsafe(self.close_and_withdraw_campaign(campaign_address), self.asyncio_loop)
+
+    async def close_and_withdraw_campaign(self, campaign_address):
+        try:
+            # Set up the campaign contract
+            campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
+
+            # Check if the caller is the owner
+            owner = campaign_contract.functions.owner().call()
+            if owner.lower() != self.account_address.lower():
+                raise ValueError("Only the campaign owner can close and withdraw funds")
+
+            # Check if the campaign is already closed
+            is_closed = campaign_contract.functions.closed().call()
+            if is_closed:
+                raise ValueError("Campaign is already closed")
+
+            # Get the current nonce, gas price, and chain ID
+            nonce = self.web3.eth.get_transaction_count(self.account_address)
+            gas_price = self.web3.eth.gas_price
+            increased_gas_price = int(gas_price * 1.1)
+            chain_id = 11155111  # Sepolia testnet chain ID
+
+            # Build the closeCampaign transaction
+            close_tx = campaign_contract.functions.closeCampaign().build_transaction({
+                'from': self.account_address,
+                'gas': 200000,  # Estimate this value
+                'gasPrice': increased_gas_price,
+                'nonce': nonce,
+                'chainId': chain_id,
+            })
+
+            # Sign and send the closeCampaign transaction
+            signed_close_tx = self.web3.eth.account.sign_transaction(close_tx, private_key=self.private_key)
+            close_tx_hash = self.web3.eth.send_raw_transaction(signed_close_tx.raw_transaction)
+
+            # Wait for the closeCampaign transaction receipt
+            close_tx_receipt = self.web3.eth.wait_for_transaction_receipt(close_tx_hash)
+
+            # Build the withdrawFunds transaction
+            withdraw_tx = campaign_contract.functions.withdrawFunds().build_transaction({
+                'from': self.account_address,
+                'gas': 200000,  # Estimate this value
+                'gasPrice': increased_gas_price,
+                'nonce': nonce + 1,  # Increment nonce for the second transaction
+                'chainId': chain_id,
+            })
+
+            # Sign and send the withdrawFunds transaction
+            signed_withdraw_tx = self.web3.eth.account.sign_transaction(withdraw_tx, private_key=self.private_key)
+            withdraw_tx_hash = self.web3.eth.send_raw_transaction(signed_withdraw_tx.raw_transaction)
+
+            # Wait for the withdrawFunds transaction receipt
+            withdraw_tx_receipt = self.web3.eth.wait_for_transaction_receipt(withdraw_tx_hash)
+
+            success_msg = (f"Campaign closed and funds withdrawn successfully!\n"
+                           f"Close Transaction Hash: {self.web3.to_hex(close_tx_hash)}\n"
+                           f"Withdraw Transaction Hash: {self.web3.to_hex(withdraw_tx_hash)}")
+            print(success_msg)
+            messagebox.showinfo("Success", success_msg)
+
+            # Ensure that the campaigns list is refreshed after the transactions
+            self.load_campaigns()
+
+        except ValueError as e:
+            error_msg = f"Failed to close and withdraw: {str(e)}"
+            print(error_msg, file=sys.stderr)
+            messagebox.showerror("Error", error_msg)
+
+        except Exception as e:
+            error_msg = f"Failed to close and withdraw: {str(e)}"
+            print(error_msg, file=sys.stderr)
+            messagebox.showerror("Error", error_msg)
+    async def view_file_async(self):
+        print("Starting view_file function")
         selected_items = self.campaign_list.selection()
         if not selected_items:
+            print("No campaign selected")
             messagebox.showwarning("Warning", "Please select a campaign to view its file.")
             return
 
         selected_item = selected_items[0]
-        _ipfsHash = self.campaign_list.item(selected_item)['values'][5]
+        ipfs_hash = self.campaign_list.item(selected_item)['values'][5]
+        print(f"Selected IPFS hash: {ipfs_hash}")
 
-        if _ipfsHash:
-            try:
-                # Try local gateway first
-                local_url = f"http://localhost:8080/ipfs/{_ipfsHash}"
-                response = requests.get(local_url, timeout=5)
-                if response.status_code == 200:
-                    webbrowser.open(local_url)
-                    return
-
-                # If local fails, try public gateways
-                gateways = [
-                    f"https://ipfs.io/ipfs/{_ipfsHash}",
-                    f"https://cloudflare-ipfs.com/ipfs/{_ipfsHash}",
-                    f"https://gateway.pinata.cloud/ipfs/{_ipfsHash}",
-                    f"https://ipfs.infura.io/ipfs/{_ipfsHash}"
-                ]
-
-                for gateway_url in gateways:
-                    try:
-                        response = requests.get(gateway_url, timeout=5)
-                        if response.status_code == 200:
-                            webbrowser.open(gateway_url)
-                            return
-                    except requests.RequestException:
-                        continue
-
-                messagebox.showerror("Error", "Failed to retrieve the file from IPFS. The content might not be available.")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to open the file: {str(e)}")
-        else:
+        if not ipfs_hash:
+            print("No IPFS hash associated with this campaign")
             messagebox.showinfo("Info", "No file associated with this campaign.")
+            return
+
+        async def check_gateway(session, url):
+            try:
+                print(f"Checking gateway: {url}")
+                async with session.get(url, timeout=5) as response:
+                    if response.status == 200:
+                        print(f"Success: {url}")
+                        return url
+                    else:
+                        print(f"Failed: {url} (Status: {response.status})")
+            except Exception as e:
+                print(f"Error checking {url}: {str(e)}")
+            return None
+
+        async def find_working_gateway():
+            gateways = [
+                f"http://localhost:8080/ipfs/{ipfs_hash}",
+                f"https://ipfs.io/ipfs/{ipfs_hash}",
+                f"https://cloudflare-ipfs.com/ipfs/{ipfs_hash}",
+                f"https://gateway.pinata.cloud/ipfs/{ipfs_hash}",
+                f"https://ipfs.infura.io/ipfs/{ipfs_hash}"
+            ]
+        
+            print(f"Searching for IPFS hash: {ipfs_hash}")
+            async with aiohttp.ClientSession() as session:
+                tasks = [check_gateway(session, url) for url in gateways]
+                results = await asyncio.gather(*tasks)
+                working_url = next((url for url in results if url), None)
+                if working_url:
+                    print(f"Found working gateway: {working_url}")
+                else:
+                    print("No working gateway found")
+                return working_url
+
+        try:
+            print("Attempting to retrieve file from IPFS")
+            # Show a progress indicator
+            self.root.config(cursor="wait")
+            self.root.update()
+
+            # Use asyncio to check gateways concurrently
+            working_url = await find_working_gateway()
+
+            if working_url:
+                print(f"Opening URL in browser: {working_url}")
+                webbrowser.open(working_url)
+            else:
+                print("Failed to find a working gateway")
+                messagebox.showerror("Error", "Failed to retrieve the file from IPFS. The content might not be available.")
+        except Exception as e:
+            print(f"Exception occurred: {str(e)}")
+            messagebox.showerror("Error", f"Failed to open the file: {str(e)}")
+        finally:
+            # Reset cursor
+            self.root.config(cursor="")
+            print("view_file function completed")
+
+    def view_file(self):
+        asyncio.run(self.view_file_async())
+    
+
+    
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -518,58 +693,3 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
-
-    
-    # async def create_campaign_async(self):
-    #  balance = self.web3.eth.get_balance(self.account)
-    #  print(f"Account balance: {self.web3.from_wei(balance, 'ether')} ETH")
-    
-    #  title = self.title_entry.get()
-    #  goal = self.web3.to_wei(float(self.goal_entry.get()), 'ether')
-    #  ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
-
-    #  try:
-    #      nonce = self.web3.eth.get_transaction_count(self.account)
-    #      gas_price = self.web3.eth.gas_price
-    #      gas_limit = 250000  # Set a fixed gas limit
-
-    #      transaction = self.factory_contract.functions.createCampaign(
-    #          title, goal, ipfs_hash
-    #      ).build_transaction({
-    #          'from': self.account,
-    #          'nonce': nonce,
-    #          'gas': gas_limit,
-    #          'gasPrice': gas_price,
-    #      })
-
-    #      total_cost = gas_limit * gas_price
-    #      print(f"Estimated total cost: {self.web3.from_wei(total_cost, 'ether')} ETH")
-    #      print(f"Gas limit: {gas_limit}")
-    #      print(f"Gas price: {self.web3.from_wei(gas_price, 'gwei')} Gwei")
-
-    #      if balance < total_cost:
-    #          raise Exception(f"Insufficient funds for gas. Need {self.web3.from_wei(total_cost, 'ether')} ETH, but only have {self.web3.from_wei(balance, 'ether')} ETH")
-
-    #      signed_txn = self.web3.eth.account.sign_transaction(transaction, self.private_key)
-    #      tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
-
-    #      print(f"Transaction sent: {self.web3.to_hex(tx_hash)}")
-
-    #      tx_receipt = await asyncio.get_event_loop().run_in_executor(
-    #          None, 
-    #          lambda: self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-    #      )
-
-    #      success_msg = f"Campaign created successfully!\nTransaction Hash: {self.web3.to_hex(tx_receipt['transactionHash'])}\nIPFS Hash: {ipfs_hash}"
-    #      print(success_msg)
-    #      self.root.after(0, lambda: messagebox.showinfo("Success", success_msg))
-    #      self.root.after(0, self.load_campaigns)
-
-    #  except Exception as e:
-    #      error_msg = f"Failed to create campaign: {str(e)}"
-    #      print(error_msg, file=sys.stderr)
-    #      self.root.after(0, lambda: messagebox.showerror("Error", error_msg))
