@@ -14,7 +14,8 @@ from web3.exceptions import ContractLogicError
 from eth_account import Account
 import threading
 import aiohttp
-
+from dotenv import load_dotenv
+import os
 
 
 from ttkbootstrap import Style
@@ -24,6 +25,7 @@ import sv_ttk
 class CampaignApp:
     def __init__(self, root):
         self.root = root
+        load_dotenv() 
         self.root.title("Campaign Donation DApp")
         self.root.geometry("1400x800")
         self.root.configure(bg="#e8eaf6")  # Light modern background
@@ -53,26 +55,11 @@ class CampaignApp:
             print(f"Failed to connect to IPFS: {str(e)}", file=sys.stderr)
             messagebox.showerror("IPFS Error", "Failed to connect to IPFS. Make sure your IPFS daemon is running.")
 
-     # for local       
-     #    LOCAL_GANACHE_URL = "http://127.0.0.1:8545"
-    #    self.web3 = Web3(Web3.HTTPProvider(LOCAL_GANACHE_URL))
-    
-    #    if not self.web3.is_connected():
-    #        error_msg = "Failed to connect to the local blockchain (Ganache)"
-    #        print(error_msg, file=sys.stderr)
-    #        messagebox.showerror("Connection Error", error_msg)
-    #        self.root.quit()
-    #        return
 
-    #    print("Connected to local Ganache blockchain")
-
-    #    # Use the first account from Ganache
-    #    self.account = self.web3.eth.accounts[0]
-    #    factory_address = "0xd173e6074883Cd27a3AF3e6D5096E856B17e0004"
        
     def setup_web3(self):
    
-       SEPOLIA_URL = "https://go.getblock.io/d35b76ef5d0446cdbaff801450af08d2"
+       SEPOLIA_URL = os.getenv("SEPOLIA_URL")
        self.web3 = Web3(Web3.HTTPProvider(SEPOLIA_URL))
     
        if not self.web3.is_connected():
@@ -84,12 +71,12 @@ class CampaignApp:
 
        print("Connected to Sepolia testnet")
 
-       self.private_key = "0x22d18bc60d6d4a077bc61eb90372b90ac56dc7029d33874ad26faed96adfc6d2"
+       self.private_key = os.getenv("PRIVATE_KEY") 
        self.account = Account.from_key(self.private_key)
        self.account_address = self.account.address
        print(f"Account address: {self.account_address}")
 
-       factory_address = "0x6738B87F817917AEe4FF8c73CbE1410e4079C7AB"
+       factory_address = os.getenv("FACTORY_ADDRESS") 
        try:
            with open('CampaignFactory_ABI.json') as f:
                factory_abi = json.load(f)

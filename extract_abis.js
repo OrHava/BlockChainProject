@@ -21,4 +21,5 @@ extractABI('CampaignFactory');
 extractABI('Campaign');
 
 
+//how to run it:
 //node extract_abis.js
