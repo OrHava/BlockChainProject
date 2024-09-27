@@ -130,6 +130,9 @@ Ensure the IPFS daemon is running if you are using IPFS for storage.
 For any issues or questions, please open an issue in the repository or contact the maintainer.
 
 ## UI Pics
+<img width="1050" alt="pic1" src="https://github.com/user-attachments/assets/c3475a34-7494-4ec8-9b97-674d4048d8d2">
+<img width="1049" alt="pic2" src="https://github.com/user-attachments/assets/dd1d7702-0198-4331-8a9a-3b4dac981200">
+<img width="1046" alt="pic3" src="https://github.com/user-attachments/assets/e4918ab1-560f-4d1e-ab9e-145267d324e5">
 
 
 Happy coding! 🚀
