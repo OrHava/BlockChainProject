@@ -209,6 +209,16 @@ class CampaignApp:
 
         self.file_label = ttk.Label(form_frame, text="No file selected", font=("Segoe UI", 10))
         self.file_label.pack(pady=10)
+                # Close and Withdraw section
+        close_withdraw_frame = tk.Frame(self.root, bg="#e8eaf6")
+        close_withdraw_frame.pack(pady=10)
+
+        tk.Label(close_withdraw_frame, text="Campaign Address:", font=self.default_font, bg="#e8eaf6").pack(side=tk.LEFT)
+        self.close_withdraw_entry = tk.Entry(close_withdraw_frame, width=50, font=self.default_font)
+        self.close_withdraw_entry.pack(side=tk.LEFT, padx=5)
+
+        close_withdraw_button = tk.Button(close_withdraw_frame, text="Close & Withdraw", command=self.handle_close_and_withdraw_button, font=self.button_font, bg="#4caf50", fg="white")
+        close_withdraw_button.pack(side=tk.LEFT, padx=5)
 
     def setup_list_tab(self):
         frame = ttk.Frame(self.list_tab, padding="20")
@@ -527,10 +537,7 @@ class CampaignApp:
             if owner.lower() != self.account_address.lower():
                 raise ValueError("Only the campaign owner can close and withdraw funds")
 
-            # Check if the campaign is already closed
-            is_closed = campaign_contract.functions.closed().call()
-            if is_closed:
-                raise ValueError("Campaign is already closed")
+         
 
             # Get the current nonce, gas price, and chain ID
             nonce = self.web3.eth.get_transaction_count(self.account_address)
