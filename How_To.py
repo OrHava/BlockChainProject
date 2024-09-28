@@ -3,6 +3,8 @@
 # https://faucets.chain.link/sepolia
 # https://getblock.io/faucet/eth-sepolia/
 
+# check if send or get worked: https://sepolia.etherscan.io/
+
 # commands: ganache in one node and in other node: truffle compile -> truffle migrate -> take  > contract address:    0x7e1755897E15d3A83BE6696E7C482bF23aA1E6
 # commands:   node extract_abis.js  
 
