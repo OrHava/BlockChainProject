@@ -1,8 +1,8 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0xEd89A020Ef27559deAccA57c38338953d90c370E",
-    "txHash": "0x63205abd2d5c425de978d62e4ed2544a556b61f11be972e6a63811ca9c68bc14"
+    "address": "0x104ea267205271a84b78ce8244E4F0515D798a2D",
+    "txHash": "0xc36986495b8712da17c7e51547e75a980868ba314e59861c5dacfc81bf5d9819"
   },
   "proxies": [
     {
@@ -23,6 +23,11 @@
     {
       "address": "0x6f3D7dc3f403D1f11Cdee51b3Eae425b92d48ee1",
       "txHash": "0x859c0fa8dcc6f8575a6d541af32c2f8338fd1747ace19993faece8e4893fbba8",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x2208cF4beaCFf3203C9a9a226b8751d2D54ef47F",
+      "txHash": "0x56a1075226494c593cfad665ebf77a6251c167878036b49d5c54660606fe572e",
       "kind": "transparent"
     }
   ],
@@ -78,6 +83,30 @@
     "091b8c03a07d37a32f228584bde1f317920c3f84e78e5ebbab9320ad8c06fd35": {
       "address": "0xC1F80895B011A87aAA680B7A106BEF6A9Dee6d6B",
       "txHash": "0x8219c12226db2f32f2af5ad68a28e9856233bc72d6a1f4fad65abd06a0148173",
+      "layout": {
+        "solcVersion": "0.8.23",
+        "storage": [
+          {
+            "contract": "CampaignFactory",
+            "label": "campaigns",
+            "type": "t_array(t_contract(Campaign)193)dyn_storage",
+            "src": "..\\project:\\contracts\\CampaignFactory.sol:7"
+          }
+        ],
+        "types": {
+          "t_array(t_contract(Campaign)193)dyn_storage": {
+            "label": "contract Campaign[]"
+          },
+          "t_contract(Campaign)193": {
+            "label": "contract Campaign"
+          }
+        },
+        "namespaces": {}
+      }
+    },
+    "1cb83951e7270ca2ecd46fbb20754b2226c043239a59370bba35547684567793": {
+      "address": "0xD5b611E1DBAE88fbb2a52c73cC6ABa707CCDadDF",
+      "txHash": "0x0015a0e511dde1abf90846b917a8af6705ebf550907d85b1d382caa6ba2ccbfc",
       "layout": {
         "solcVersion": "0.8.23",
         "storage": [

@@ -55,7 +55,8 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
+      "type": "function",
+      "constant": true
     },
     {
       "inputs": [
@@ -91,7 +92,8 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
+      "type": "function",
+      "constant": true
     },
     {
       "inputs": [],
@@ -104,7 +106,8 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
+      "type": "function",
+      "constant": true
     }
   ],
   "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"campaignAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"title\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"goal\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"ipfsHash\",\"type\":\"string\"}],\"name\":\"CampaignCreated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"campaigns\",\"outputs\":[{\"internalType\":\"contract Campaign\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_title\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_goal\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_ipfsHash\",\"type\":\"string\"}],\"name\":\"createCampaign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCampaignCount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getCampaigns\",\"outputs\":[{\"internalType\":\"contract Campaign[]\",\"name\":\"\",\"type\":\"address[]\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"project:/contracts/CampaignFactory.sol\":\"CampaignFactory\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\"},\"optimizer\":{\"enabled\":true,\"runs\":2000},\"remappings\":[]},\"sources\":{\"project:/contracts/Campaign.sol\":{\"keccak256\":\"0xe63eb0de41eeb4a4f657d5436da94adda8d7df0a091352554c18cc66b5b93c7c\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://0bcb8812bcce36afc8e7af095a23c175e46a79358209af9129c7dc9a49b35e11\",\"dweb:/ipfs/QmeNoJmjQVMfK4HE7DEEU6mtg15aB62mBVGgmf9qK1hEND\"]},\"project:/contracts/CampaignFactory.sol\":{\"keccak256\":\"0xa8631605d6f9a039642e08230f3305f9b6e647cae03e109fc6f0746d13029e9b\",\"license\":\"MIT\",\"urls\":[\"bzz-raw://f20a477b416d93c249d60861a446a00dbebfa440daa3a5f3b3cbac44071fc37d\",\"dweb:/ipfs/QmdnCt8W3KLNmoiKCEUsNCi45MkkAMpFNAbvipC9HiXEFk\"]}},\"version\":1}",
@@ -5054,10 +5057,17 @@
       "links": {},
       "address": "0x6f3D7dc3f403D1f11Cdee51b3Eae425b92d48ee1",
       "transactionHash": "0x859c0fa8dcc6f8575a6d541af32c2f8338fd1747ace19993faece8e4893fbba8"
+    },
+    "1727372079261": {
+      "events": {},
+      "links": {},
+      "address": "0x2208cF4beaCFf3203C9a9a226b8751d2D54ef47F",
+      "transactionHash": "0x56a1075226494c593cfad665ebf77a6251c167878036b49d5c54660606fe572e"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2024-09-25T20:33:14.292Z",
+  "updatedAt": "2024-09-26T17:38:10.735Z",
+  "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",
     "methods": {},
