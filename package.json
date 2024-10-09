@@ -4,6 +4,7 @@
     "@openzeppelin/hardhat-upgrades": "^3.3.0",
     "@openzeppelin/truffle-upgrades": "^1.21.0",
     "@truffle/hdwallet-provider": "^2.1.15",
+    "dotenv": "^16.4.5",
     "web3": "^4.13.0"
   }
 }
