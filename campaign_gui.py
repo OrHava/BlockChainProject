@@ -27,7 +27,7 @@ class CampaignApp:
         self.root = root
         load_dotenv() 
         self.root.title("Campaign Donation DApp")
-        self.root.geometry("1400x800")
+        self.root.geometry("1400x1000")
         self.root.configure(bg="#e8eaf6")  # Light modern background
       
         # Use modern fonts
@@ -198,6 +198,10 @@ class CampaignApp:
         self.goal_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
         self.goal_entry.pack(fill=tk.X, pady=(0, 10))
 
+        ttk.Label(form_frame, text="Private Key:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.create_private_key_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12), show="*")
+        self.create_private_key_entry.pack(fill=tk.X, pady=(0, 10))
+
         button_frame = ttk.Frame(form_frame)
         button_frame.pack(pady=20)
 
@@ -209,16 +213,24 @@ class CampaignApp:
 
         self.file_label = ttk.Label(form_frame, text="No file selected", font=("Segoe UI", 10))
         self.file_label.pack(pady=10)
-                # Close and Withdraw section
-        close_withdraw_frame = tk.Frame(self.root, bg="#e8eaf6")
-        close_withdraw_frame.pack(pady=10)
 
-        tk.Label(close_withdraw_frame, text="Campaign Address:", font=self.default_font, bg="#e8eaf6").pack(side=tk.LEFT)
-        self.close_withdraw_entry = tk.Entry(close_withdraw_frame, width=50, font=self.default_font)
-        self.close_withdraw_entry.pack(side=tk.LEFT, padx=5)
+        # Close and Withdraw section
+        close_withdraw_frame = ttk.Frame(frame)
+        close_withdraw_frame.pack(pady=20, fill=tk.X)
 
-        close_withdraw_button = tk.Button(close_withdraw_frame, text="Close & Withdraw", command=self.handle_close_and_withdraw_button, font=self.button_font, bg="#4caf50", fg="white")
-        close_withdraw_button.pack(side=tk.LEFT, padx=5)
+        ttk.Label(close_withdraw_frame, text="Campaign Address:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.close_withdraw_entry = ttk.Entry(close_withdraw_frame, width=50, font=("Segoe UI", 12))
+        self.close_withdraw_entry.pack(fill=tk.X, pady=(0, 10))
+
+        ttk.Label(close_withdraw_frame, text="Private Key:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.private_key_entry = ttk.Entry(close_withdraw_frame, width=50, font=("Segoe UI", 12), show="*")
+        self.private_key_entry.pack(fill=tk.X, pady=(0, 10))
+
+        close_withdraw_button = ttk.Button(close_withdraw_frame, text="Close & Withdraw", command=self.handle_close_and_withdraw_button, style="Accent.TButton")
+        close_withdraw_button.pack(pady=10)
+
+
+        close_withdraw_button.pack(pady=10)
 
     def setup_list_tab(self):
         frame = ttk.Frame(self.list_tab, padding="20")
@@ -278,6 +290,10 @@ class CampaignApp:
         self.amount_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12))
         self.amount_entry.pack(fill=tk.X, pady=(0, 10))
 
+        ttk.Label(form_frame, text="Private Key:", font=("Segoe UI", 12)).pack(anchor=tk.W, pady=(10, 5))
+        self.donate_private_key_entry = ttk.Entry(form_frame, width=50, font=("Segoe UI", 12), show="*")
+        self.donate_private_key_entry.pack(fill=tk.X, pady=(0, 10))
+
         donate_button = ttk.Button(form_frame, text="Donate", command=self.handle_donate_button, style="Accent.TButton")
         donate_button.pack(pady=20)
 
@@ -317,10 +333,16 @@ class CampaignApp:
         title = self.title_entry.get()
         goal = self.web3.to_wei(float(self.goal_entry.get()), 'ether')
         ipfs_hash = self.ipfs_hash if self.ipfs_hash else ""
+        private_key = self.create_private_key_entry.get()
+
+        # Ensure the private key has the '0x' prefix
+        if not private_key.startswith('0x'):
+            private_key = '0x' + private_key
 
         try:
-            # Get the account address as a string
-            account_address = self.account.address if hasattr(self.account, 'address') else self.account
+            # Get the account address from the private key
+            account = self.web3.eth.account.from_key(private_key)
+            account_address = account.address
 
             # Get nonce for the account
             nonce = self.web3.eth.get_transaction_count(account_address)
@@ -336,9 +358,9 @@ class CampaignApp:
                 'gas': 2000000,  # Adjust gas limit as necessary
                 'gasPrice': increased_gas_price,
             })
-        
+    
             # Sign the transaction
-            signed_txn = self.web3.eth.account.sign_transaction(txn, private_key=self.private_key)
+            signed_txn = self.web3.eth.account.sign_transaction(txn, private_key=private_key)
 
             # Send the transaction
             tx_hash = self.web3.eth.send_raw_transaction(signed_txn.raw_transaction)
@@ -355,10 +377,8 @@ class CampaignApp:
             print(error_msg, file=sys.stderr)
             messagebox.showerror("Error", error_msg)
 
-
-
     def create_campaign(self):
-        asyncio.run(self.create_campaign_async())
+        asyncio.run_coroutine_threadsafe(self.create_campaign_async(), self.asyncio_loop)
 
     def load_campaigns(self):
         self.campaign_list.delete(*self.campaign_list.get_children())
@@ -452,17 +472,30 @@ class CampaignApp:
         threading.Thread(target=self.asyncio_loop.run_forever, daemon=True).start()
 
     def handle_donate_button(self):
-        # Get campaign address and donation amount from the entries
+        # Get campaign address, donation amount, and private key from the entries
         campaign_address = self.donate_entry.get()
         amount = self.amount_entry.get()
+        private_key = self.donate_private_key_entry.get()
+
+        # Ensure the campaign address has the '0x' prefix
+        if not campaign_address.startswith('0x'):
+            campaign_address = '0x' + campaign_address
+
+        # Ensure the private key has the '0x' prefix
+        if not private_key.startswith('0x'):
+            private_key = '0x' + private_key
 
         # Run the async donation function in the asyncio event loop
-        asyncio.run_coroutine_threadsafe(self.donate_to_campaign(campaign_address, amount), self.asyncio_loop)
+        asyncio.run_coroutine_threadsafe(self.donate_to_campaign(campaign_address, amount, private_key), self.asyncio_loop)
 
-    async def donate_to_campaign(self, campaign_address, amount):
+    async def donate_to_campaign(self, campaign_address, amount, private_key):
         try:
+            # Get the account address from the private key
+            account = self.web3.eth.account.from_key(private_key)
+            account_address = account.address
+
             # Check if the account has enough balance
-            balance = self.web3.eth.get_balance(self.account_address)
+            balance = self.web3.eth.get_balance(account_address)
             if balance == 0:
                 raise ValueError("Account has insufficient funds for the donation")
 
@@ -477,24 +510,23 @@ class CampaignApp:
                 raise ValueError("Donation amount is too small. Minimum is 0.000001 ETH")
 
             # Set up the campaign contract
-           
-            nonce = self.web3.eth.get_transaction_count(self.account_address)
+            nonce = self.web3.eth.get_transaction_count(account_address)
             gas_price = self.web3.eth.gas_price
             increased_gas_price = int(gas_price * 1.1)
             chain_id = 11155111  # Sepolia testnet chain ID
 
             campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
             tx = campaign_contract.functions.donate().build_transaction({
-               'from': self.account_address,
-               'value': amount_in_wei,
-               'gas': 200000,  # Estimate this value
-               'gasPrice': increased_gas_price,
-               'nonce': nonce,
-               'chainId': chain_id,
-           })
+                'from': account_address,
+                'value': amount_in_wei,
+                'gas': 200000,  # Estimate this value
+                'gasPrice': increased_gas_price,
+                'nonce': nonce,
+                'chainId': chain_id,
+            })
 
             # Sign and send the transaction
-            signed_tx = self.web3.eth.account.sign_transaction(tx, private_key=self.private_key)
+            signed_tx = self.web3.eth.account.sign_transaction(tx, private_key=private_key)
             tx_hash = self.web3.eth.send_raw_transaction(signed_tx.raw_transaction)
 
             # Wait for transaction receipt and confirm it succeeded
@@ -519,35 +551,41 @@ class CampaignApp:
 
 
 
-
     def handle_close_and_withdraw_button(self):
-        # Get campaign address from the entry
+        # Get campaign address and private key from the entries
         campaign_address = self.close_withdraw_entry.get()
+        private_key = self.private_key_entry.get()
 
+        # Ensure the campaign address has the '0x' prefix
+        if not campaign_address.startswith('0x'):
+            campaign_address = '0x' + campaign_address
+
+        # Ensure the private key has the '0x' prefix
+        if not private_key.startswith('0x'):
+            private_key = '0x' + private_key
         # Run the async close and withdraw function in the asyncio event loop
-        asyncio.run_coroutine_threadsafe(self.close_and_withdraw_campaign(campaign_address), self.asyncio_loop)
+        asyncio.run_coroutine_threadsafe(self.close_and_withdraw_campaign(campaign_address, private_key), self.asyncio_loop)    
 
-    async def close_and_withdraw_campaign(self, campaign_address):
+    async def close_and_withdraw_campaign(self, campaign_address, private_key):
         try:
             # Set up the campaign contract
             campaign_contract = self.web3.eth.contract(address=campaign_address, abi=self.campaign_abi)
 
             # Check if the caller is the owner
             owner = campaign_contract.functions.owner().call()
-            if owner.lower() != self.account_address.lower():
+            account_address = self.web3.eth.account.from_key(private_key).address
+            if owner.lower() != account_address.lower():
                 raise ValueError("Only the campaign owner can close and withdraw funds")
 
-         
-
             # Get the current nonce, gas price, and chain ID
-            nonce = self.web3.eth.get_transaction_count(self.account_address)
+            nonce = self.web3.eth.get_transaction_count(account_address)
             gas_price = self.web3.eth.gas_price
             increased_gas_price = int(gas_price * 1.1)
             chain_id = 11155111  # Sepolia testnet chain ID
 
             # Build the closeCampaign transaction
             close_tx = campaign_contract.functions.closeCampaign().build_transaction({
-                'from': self.account_address,
+                'from': account_address,
                 'gas': 200000,  # Estimate this value
                 'gasPrice': increased_gas_price,
                 'nonce': nonce,
@@ -555,7 +593,7 @@ class CampaignApp:
             })
 
             # Sign and send the closeCampaign transaction
-            signed_close_tx = self.web3.eth.account.sign_transaction(close_tx, private_key=self.private_key)
+            signed_close_tx = self.web3.eth.account.sign_transaction(close_tx, private_key=private_key)
             close_tx_hash = self.web3.eth.send_raw_transaction(signed_close_tx.raw_transaction)
 
             # Wait for the closeCampaign transaction receipt
@@ -563,7 +601,7 @@ class CampaignApp:
 
             # Build the withdrawFunds transaction
             withdraw_tx = campaign_contract.functions.withdrawFunds().build_transaction({
-                'from': self.account_address,
+                'from': account_address,
                 'gas': 200000,  # Estimate this value
                 'gasPrice': increased_gas_price,
                 'nonce': nonce + 1,  # Increment nonce for the second transaction
@@ -571,7 +609,7 @@ class CampaignApp:
             })
 
             # Sign and send the withdrawFunds transaction
-            signed_withdraw_tx = self.web3.eth.account.sign_transaction(withdraw_tx, private_key=self.private_key)
+            signed_withdraw_tx = self.web3.eth.account.sign_transaction(withdraw_tx, private_key=private_key)
             withdraw_tx_hash = self.web3.eth.send_raw_transaction(signed_withdraw_tx.raw_transaction)
 
             # Wait for the withdrawFunds transaction receipt
